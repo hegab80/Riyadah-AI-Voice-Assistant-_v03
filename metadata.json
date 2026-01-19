@@ -1,0 +1,7 @@
+{
+  "name": "Riyadah AI Voice Assistant _v03",
+  "description": "A professional bilingual (Arabic/English) voice agent for Riyadah, providing customer support and information querying via the Gemini Live API.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
