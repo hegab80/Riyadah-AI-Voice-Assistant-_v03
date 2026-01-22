@@ -39,32 +39,26 @@ export async function submitSupportAction(data: {
   topic: string;
 }): Promise<any> {
   try {
-    // The Google Apps Script provided expects:
-    // data.type
-    // data.title
-    // data.details (which it stringifies)
-
+    // Exact mapping to match your Google Apps Script:
+    // data.type, data.title, data.details
     const payload = {
       type: data.messageType,
       title: data.actionDone,
       details: {
-        clientName: data.clientName,
+        client: data.clientName,
         phone: data.phone,
         email: data.email,
         topic: data.topic,
-        loggedAt: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
+        timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Africa/Cairo' })
       }
     };
 
-    // Using text/plain to avoid CORS preflight (OPTIONS) which Google Apps Script doesn't handle well.
-    // The script will receive the raw string in e.postData.contents and JSON.parse it.
+    // For Google Apps Script, 'no-cors' with a string body is the most reliable 
+    // way to bypass CORS and ensure the string arrives in e.postData.contents
     await fetch(GOOGLE_SHEETS_URL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload)
     });
 
     return { status: 'success' };

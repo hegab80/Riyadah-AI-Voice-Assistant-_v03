@@ -8,6 +8,24 @@ import { Visualizer } from './components/Visualizer';
 
 const MODEL_NAME = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
+const HelpDeskIcon = () => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="20" 
+    height="20" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className="text-white"
+  >
+    <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>
+    <path d="M21 16v2a2 2 0 0 1-2 2h-5"/>
+  </svg>
+);
+
 const knowledgeBaseTool: FunctionDeclaration = {
   name: 'query_knowledge_base',
   parameters: {
@@ -72,7 +90,6 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [transcripts, setTranscripts] = useState<MessageLog[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 10)}`);
 
@@ -133,6 +150,13 @@ const App: React.FC = () => {
 
       const dynamicSystemInstruction = `You are Riyadah's AI Voice Assistant, a helpful representative of Riyadah Ltd.
 
+Core Identity & Pronunciation Rules:
+- Company Name: "Riyadah" (Arabic: رِيَــادَة).
+- Meaning: The name means "Leadership" or "Pioneering" in an enterprise context.
+- Context: Riyadah is a Technology Integrator and Infrastructure company.
+- FORBIDDEN: NEVER refer to "Sports" (رياضة). We are NOT a sports club.
+- Arabic Linguistic Rule: When speaking Arabic, you MUST pronounce/write it with the letter 'Dal' (د), not 'Dad' (ض). Use the diacritics: "رِيَـادَة". NEVER say or write "رياضة".
+
 Protocol:
 1. Knowledge: Use 'query_knowledge_base' for all info.
 2. Logging: For bookings, tickets, or sales, gather FULL name, phone, and email FIRST.
@@ -159,7 +183,6 @@ Tone: Professional, bilingual (Arabic/English). Be concise.`;
             scriptProcessorRef.current.connect(audioContextInRef.current!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            // Audio Output handling
             const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData && audioContextOutRef.current) {
               setIsSpeaking(true);
@@ -186,7 +209,6 @@ Tone: Professional, bilingual (Arabic/English). Be concise.`;
               setIsSpeaking(false);
             }
 
-            // Function Call handling
             if (message.toolCall) {
               for (const fc of message.toolCall.functionCalls) {
                 let responseResult = "Action successful.";
@@ -240,7 +262,7 @@ Tone: Professional, bilingual (Arabic/English). Be concise.`;
           },
           onerror: (e) => {
             console.error('WebSocket Error:', e);
-            setErrorMsg("Connection issue or internal model error. Please restart.");
+            setErrorMsg("Call ended. Possible connection issue.");
             setStatus('error');
             cleanup();
           },
@@ -251,7 +273,6 @@ Tone: Professional, bilingual (Arabic/English). Be concise.`;
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           systemInstruction: dynamicSystemInstruction,
           tools: [{ functionDeclarations: [knowledgeBaseTool, bookMeetingTool, createTicketTool, logSalesInterestTool] }],
-          // Transcriptions disabled to avoid Internal Error 500 in preview model
         }
       });
       sessionRef.current = await sessionPromise;
@@ -263,65 +284,78 @@ Tone: Professional, bilingual (Arabic/English). Be concise.`;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
-      <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col min-h-[600px]">
-        <header className="bg-slate-900 px-8 py-6 text-white flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg">R</div>
-            <div>
-              <h1 className="text-lg font-bold leading-none">Riyadah Voice</h1>
-              <span className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">AI Assistant</span>
+    <div className="h-screen w-full bg-white flex flex-col overflow-hidden">
+      {/* Absolute top header for seamless iframe embedding */}
+      <header className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center shrink-0 w-full shadow-lg z-20">
+        <div className="flex items-center space-x-3">
+          <HelpDeskIcon />
+          <div>
+            <h1 className="text-base font-bold leading-none tracking-tight">Riyadah Voice</h1>
+            <span className="text-[9px] text-cyan-400 font-bold tracking-widest uppercase">AI Assistant</span>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">
+          <div className={`w-1.5 h-1.5 rounded-full ${status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
+          <span className="text-slate-300">{status}</span>
+        </div>
+      </header>
+
+      {/* Main content filling the height */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 space-y-10 overflow-hidden">
+        <div className="text-center animate-fadeIn">
+          <h2 className="text-2xl font-bold text-slate-800 mb-1">Welcome to Riyadah</h2>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Professional Voice AI Service</p>
+        </div>
+
+        <div className="relative group">
+          <div className={`absolute -inset-16 bg-cyan-100/30 rounded-full blur-3xl transition-all duration-1000 ${isSpeaking || isListening ? 'scale-125 opacity-100' : 'scale-50 opacity-0'}`} />
+          <div className="relative z-10 w-48 h-48 bg-white rounded-full shadow-2xl flex items-center justify-center border border-slate-50">
+             <Visualizer active={isSpeaking || isListening} color={isSpeaking ? 'bg-cyan-500' : 'bg-green-500'} />
+          </div>
+        </div>
+
+        <div className="w-full flex flex-col items-center space-y-4 pb-4">
+          <button
+            onClick={status === 'connected' || status === 'connecting' ? cleanup : connect}
+            disabled={status === 'connecting'}
+            className={`group relative px-12 py-4 rounded-full font-bold text-base shadow-xl transition-all transform active:scale-95 ${
+              status === 'connected' || status === 'connecting'
+                ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
+                : 'bg-slate-900 text-white hover:bg-black shadow-slate-200'
+            }`}
+          >
+            <span className="flex items-center space-x-3">
+              {status === 'connecting' ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Connecting...</span>
+                </>
+              ) : status === 'connected' ? (
+                'End Conversation'
+              ) : (
+                'Start Interaction'
+              )}
+            </span>
+          </button>
+
+          {errorMsg && (
+            <div className="max-w-xs text-center p-3 bg-red-50 text-red-700 rounded-xl text-[10px] font-bold border border-red-100 uppercase tracking-tight">
+              {errorMsg}
             </div>
-          </div>
-          <div className="flex items-center space-x-2 bg-slate-800 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
-            <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`} />
-            <span className="text-slate-300">{status}</span>
-          </div>
-        </header>
+          )}
+        </div>
+      </main>
 
-        <main className="p-10 flex-1 flex flex-col items-center justify-center space-y-12">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2 arabic">مرحباً بك في رياده</h2>
-            <p className="text-slate-500 text-sm">Bilingual Professional Voice Agent</p>
-          </div>
-
-          <div className="relative">
-            <div className={`absolute -inset-8 bg-blue-100/50 rounded-full blur-2xl transition-all duration-1000 ${isSpeaking || isListening ? 'scale-110 opacity-100' : 'scale-90 opacity-0'}`} />
-            <div className="relative z-10 w-48 h-48 bg-white rounded-full shadow-inner flex items-center justify-center border-4 border-slate-50">
-               <Visualizer active={isSpeaking || isListening} color={isSpeaking ? 'bg-blue-600' : 'bg-green-500'} />
-            </div>
-          </div>
-
-          <div className="w-full flex flex-col items-center space-y-6">
-            <button
-              onClick={status === 'connected' || status === 'connecting' ? cleanup : connect}
-              disabled={status === 'connecting'}
-              className={`group relative px-10 py-4 rounded-full font-bold text-lg shadow-xl transition-all transform active:scale-95 ${
-                status === 'connected' || status === 'connecting'
-                  ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              <span className="flex items-center space-x-3">
-                {status === 'connecting' ? 'Establishing...' : status === 'connected' ? 'End Call' : 'Start Interaction'}
-              </span>
-            </button>
-
-            {errorMsg && (
-              <div className="max-w-xs text-center p-3 bg-red-50 text-red-600 rounded-xl text-xs font-medium border border-red-100">
-                {errorMsg}
-              </div>
-            )}
-          </div>
-        </main>
-
-        <footer className="bg-slate-50 px-8 py-6 border-t border-slate-100 text-center">
-          <p className="text-slate-400 text-[11px] font-medium uppercase tracking-widest leading-relaxed">
-            © 2026 Riyadah Ltd. All rights reserved. <br/>
-            Hotline: (+2) 0155-155-3285 Cairo, Egypt
-          </p>
-        </footer>
-      </div>
+      {/* Footer snapping to bottom */}
+      <footer className="bg-slate-50 px-6 py-4 border-t border-slate-100 text-center shrink-0 w-full">
+        <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.3em] leading-relaxed">
+          © 2026 Riyadah Ltd. <br/>
+          Hotline: (+2) 0155-155-3285 • Cairo, Egypt
+        </p>
+      </footer>
     </div>
   );
 };
